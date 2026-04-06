@@ -4,8 +4,8 @@ const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/test/**/*.ts'],
-  testPathIgnorePatterns: ['<rootDir>/test/integration/'],
+  testMatch: ['<rootDir>/test/integration/**/*.ts'],
+  testTimeout: 60_000,
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
