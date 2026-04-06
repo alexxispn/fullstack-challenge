@@ -4,9 +4,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ProductsController } from '../src/adapters/inbound/http/products/products.controller';
+import { CreateProductRequestDto } from '../src/adapters/inbound/http/products/dto/create-product-request.dto';
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
-import { ListProductsCriteria, Product } from '../src/domain/products/product';
+import { CreateProduct, ListProductsCriteria, Product } from '../src/domain/products/product';
 import { PRODUCT_REPOSITORY_PORT, ProductRepositoryPort } from '../src/ports/product-repository.port';
 
 const seededProducts: Product[] = [
@@ -16,6 +17,7 @@ const seededProducts: Product[] = [
     category: 'rings',
     price: 129,
     isActive: true,
+    stock: 25,
     createdAt: '2025-01-11T09:00:00.000Z',
   },
   {
@@ -24,6 +26,7 @@ const seededProducts: Product[] = [
     category: 'necklaces',
     price: 175,
     isActive: false,
+    stock: 0,
     createdAt: '2025-01-15T12:00:00.000Z',
   },
   {
@@ -32,6 +35,7 @@ const seededProducts: Product[] = [
     category: 'earrings',
     price: 99,
     isActive: true,
+    stock: 50,
     createdAt: '2025-01-17T11:10:00.000Z',
   },
   {
@@ -40,6 +44,7 @@ const seededProducts: Product[] = [
     category: 'bracelets',
     price: 72,
     isActive: true,
+    stock: 100,
     createdAt: '2025-01-20T13:05:00.000Z',
   },
 ];
@@ -53,8 +58,12 @@ class FakeProductsRepository implements ProductRepositoryPort {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  async create(): Promise<Product> {
-    throw new Error('Not implemented in this test double.');
+  async create(input: CreateProduct): Promise<Product> {
+    return {
+      id: 99,
+      ...input,
+      createdAt: '2025-02-01T00:00:00.000Z',
+    };
   }
 }
 
@@ -99,6 +108,18 @@ describe('GET /products', () => {
     expect(response.some((product: Product) => product.isActive === false)).toBe(true);
   });
 
+  it('returns products with stock field', async () => {
+    const response = await listProducts();
+
+    expect(response).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 4, stock: 100 }),
+        expect.objectContaining({ id: 3, stock: 50 }),
+        expect.objectContaining({ id: 1, stock: 25 }),
+      ]),
+    );
+  });
+
   it('filters by category and maxPrice combined', async () => {
     const response = await listProducts({ category: 'rings', maxPrice: '130' });
 
@@ -121,5 +142,60 @@ describe('GET /products', () => {
     });
 
     return productsController.listProducts(transformedQuery);
+  }
+});
+
+describe('POST /products', () => {
+  let testingModule: TestingModule;
+  let productsController: ProductsController;
+  let bodyPipe: ValidationPipe;
+
+  beforeAll(async () => {
+    testingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(PRODUCT_REPOSITORY_PORT)
+      .useValue(new FakeProductsRepository())
+      .compile();
+
+    productsController = testingModule.get(ProductsController);
+    bodyPipe = new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    });
+  });
+
+  afterAll(async () => {
+    await testingModule.close();
+  });
+
+  it('creates a product with stock and returns it', async () => {
+    const response = await createProduct({
+      name: 'Test Ring',
+      category: 'rings',
+      price: 99,
+      isActive: true,
+      stock: 42,
+    });
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        name: 'Test Ring',
+        category: 'rings',
+        price: 99,
+        isActive: true,
+        stock: 42,
+      }),
+    );
+  });
+
+  async function createProduct(rawBody: Record<string, unknown>): Promise<Product> {
+    const transformedBody = await bodyPipe.transform(rawBody, {
+      type: 'body',
+      metatype: CreateProductRequestDto,
+      data: '',
+    });
+
+    return productsController.createProduct(transformedBody);
   }
 });
