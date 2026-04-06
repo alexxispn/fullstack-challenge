@@ -30,6 +30,16 @@ export class PostgresProductRepository implements ProductRepositoryPort {
       whereClauses.push(`is_active = $${values.length}`);
     }
 
+    if (criteria.category) {
+      values.push(criteria.category);
+      whereClauses.push(`LOWER(category) = LOWER($${values.length})`);
+    }
+
+    if (criteria.maxPrice !== undefined) {
+      values.push(criteria.maxPrice);
+      whereClauses.push(`price <= $${values.length}`);
+    }
+
     const whereStatement =
       whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
