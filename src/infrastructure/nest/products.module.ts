@@ -4,7 +4,7 @@ import { CreateProductUseCase } from '../../application/products/use-cases/creat
 import { ListProductsUseCase } from '../../application/products/use-cases/list-products.use-case';
 import { ProductsController } from '../../adapters/inbound/http/products/products.controller';
 import { PostgresProductRepository } from '../../adapters/outbound/persistence/postgres/postgres-product.repository';
-import { PRODUCT_REPOSITORY_PORT, ProductRepositoryPort } from '../../ports/product-repository.port';
+import { PRODUCT_READER, PRODUCT_WRITER } from '../../ports/product-repository.port';
 import { DatabaseModule } from '../database/database.module';
 
 @Module({
@@ -13,20 +13,24 @@ import { DatabaseModule } from '../database/database.module';
   providers: [
     PostgresProductRepository,
     {
-      provide: PRODUCT_REPOSITORY_PORT,
+      provide: PRODUCT_READER,
+      useExisting: PostgresProductRepository,
+    },
+    {
+      provide: PRODUCT_WRITER,
       useExisting: PostgresProductRepository,
     },
     {
       provide: ListProductsUseCase,
-      useFactory: (productRepository: ProductRepositoryPort) =>
-        new ListProductsUseCase(productRepository),
-      inject: [PRODUCT_REPOSITORY_PORT],
+      useFactory: (reader: PostgresProductRepository) =>
+        new ListProductsUseCase(reader),
+      inject: [PRODUCT_READER],
     },
     {
       provide: CreateProductUseCase,
-      useFactory: (productRepository: ProductRepositoryPort) =>
-        new CreateProductUseCase(productRepository),
-      inject: [PRODUCT_REPOSITORY_PORT],
+      useFactory: (writer: PostgresProductRepository) =>
+        new CreateProductUseCase(writer),
+      inject: [PRODUCT_WRITER],
     },
   ],
 })

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { QueryResultRow } from 'pg';
 
 import { ListProductsCriteria, Product } from '../../../../domain/products/product';
-import { ProductRepositoryPort } from '../../../../ports/product-repository.port';
+import { ProductRepository } from '../../../../ports/product-repository.port';
 import { DatabaseService } from '../../../../infrastructure/database/database.service';
 
 interface ProductRow extends QueryResultRow {
@@ -16,7 +16,7 @@ interface ProductRow extends QueryResultRow {
 }
 
 @Injectable()
-export class PostgresProductRepository implements ProductRepositoryPort {
+export class PostgresProductRepository implements ProductRepository {
   constructor(
     @Inject(DatabaseService)
     private readonly databaseService: DatabaseService,

@@ -8,7 +8,7 @@ import { CreateProductRequestDto } from '../src/adapters/inbound/http/products/d
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
 import { ListProductsCriteria, Product, ProductPrimitives } from '../src/domain/products/product';
-import { PRODUCT_REPOSITORY_PORT, ProductRepositoryPort } from '../src/ports/product-repository.port';
+import { PRODUCT_READER, PRODUCT_WRITER, ProductRepository } from '../src/ports/product-repository.port';
 
 const seededProducts: ProductPrimitives[] = [
   {
@@ -49,7 +49,7 @@ const seededProducts: ProductPrimitives[] = [
   },
 ];
 
-class FakeProductsRepository implements ProductRepositoryPort {
+class FakeProductsRepository implements ProductRepository {
   async findAll(criteria: ListProductsCriteria): Promise<Product[]> {
     return seededProducts
       .filter((p) => !criteria.activeOnly || p.isActive)
@@ -75,11 +75,14 @@ describe('GET /products', () => {
   let queryPipe: ValidationPipe;
 
   beforeAll(async () => {
+    const fake = new FakeProductsRepository();
     testingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PRODUCT_REPOSITORY_PORT)
-      .useValue(new FakeProductsRepository())
+      .overrideProvider(PRODUCT_READER)
+      .useValue(fake)
+      .overrideProvider(PRODUCT_WRITER)
+      .useValue(fake)
       .compile();
 
     productsController = testingModule.get(ProductsController);
@@ -157,11 +160,14 @@ describe('POST /products', () => {
   let bodyPipe: ValidationPipe;
 
   beforeAll(async () => {
+    const fake = new FakeProductsRepository();
     testingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PRODUCT_REPOSITORY_PORT)
-      .useValue(new FakeProductsRepository())
+      .overrideProvider(PRODUCT_READER)
+      .useValue(fake)
+      .overrideProvider(PRODUCT_WRITER)
+      .useValue(fake)
       .compile();
 
     productsController = testingModule.get(ProductsController);

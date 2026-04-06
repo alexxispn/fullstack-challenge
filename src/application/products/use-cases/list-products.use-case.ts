@@ -1,11 +1,11 @@
 import { ListProductsCriteria, ProductPrimitives } from '../../../domain/products/product';
-import { ProductRepositoryPort } from '../../../ports/product-repository.port';
+import { ProductReader } from '../../../ports/product-repository.port';
 
 export class ListProductsUseCase {
-  constructor(private readonly productRepository: ProductRepositoryPort) {}
+  constructor(private readonly productReader: ProductReader) {}
 
   async execute(criteria: ListProductsCriteria): Promise<ProductPrimitives[]> {
-    const products = await this.productRepository.findAll(criteria);
+    const products = await this.productReader.findAll(criteria);
     return products.map((product) => product.toPrimitives());
   }
 }
