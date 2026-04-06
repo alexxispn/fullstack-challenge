@@ -2,7 +2,7 @@ import { Body, Controller, Get, Inject, Post, Query } from '@nestjs/common';
 
 import { CreateProductUseCase } from '../../../../application/products/use-cases/create-product.use-case';
 import { ListProductsUseCase } from '../../../../application/products/use-cases/list-products.use-case';
-import { Product } from '../../../../domain/products/product';
+import { ProductPrimitives } from '../../../../domain/products/product';
 import { CreateProductRequestDto } from './dto/create-product-request.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 
@@ -16,7 +16,7 @@ export class ProductsController {
   ) {}
 
   @Get()
-  listProducts(@Query() query: ListProductsQueryDto): Promise<Product[]> {
+  listProducts(@Query() query: ListProductsQueryDto): Promise<ProductPrimitives[]> {
     return this.listProductsUseCase.execute({
       activeOnly: query.activeOnly ?? true,
       category: query.category,
@@ -25,7 +25,7 @@ export class ProductsController {
   }
 
   @Post()
-  createProduct(@Body() input: CreateProductRequestDto): Promise<Product> {
+  createProduct(@Body() input: CreateProductRequestDto): Promise<ProductPrimitives> {
     return this.createProductUseCase.execute({
       name: input.name,
       category: input.category,

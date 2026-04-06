@@ -7,10 +7,10 @@ import { ProductsController } from '../src/adapters/inbound/http/products/produc
 import { CreateProductRequestDto } from '../src/adapters/inbound/http/products/dto/create-product-request.dto';
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
-import { CreateProduct, ListProductsCriteria, Product } from '../src/domain/products/product';
+import { ListProductsCriteria, Product, ProductPrimitives } from '../src/domain/products/product';
 import { PRODUCT_REPOSITORY_PORT, ProductRepositoryPort } from '../src/ports/product-repository.port';
 
-const seededProducts: Product[] = [
+const seededProducts: ProductPrimitives[] = [
   {
     id: 1,
     name: 'Aurora Ring',
@@ -52,18 +52,20 @@ const seededProducts: Product[] = [
 class FakeProductsRepository implements ProductRepositoryPort {
   async findAll(criteria: ListProductsCriteria): Promise<Product[]> {
     return seededProducts
-      .filter((product) => !criteria.activeOnly || product.isActive)
-      .filter((product) => !criteria.category || product.category.toLowerCase() === criteria.category.toLowerCase())
-      .filter((product) => criteria.maxPrice === undefined || product.price <= criteria.maxPrice)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      .filter((p) => !criteria.activeOnly || p.isActive)
+      .filter((p) => !criteria.category || p.category.toLowerCase() === criteria.category!.toLowerCase())
+      .filter((p) => criteria.maxPrice === undefined || p.price <= criteria.maxPrice)
+      .sort((left, right) => right.createdAt!.localeCompare(left.createdAt!))
+      .map((p) => Product.fromPersistence(p));
   }
 
-  async create(input: CreateProduct): Promise<Product> {
-    return {
+  async create(product: Product): Promise<Product> {
+    const primitives = product.toPrimitives();
+    return Product.fromPersistence({
+      ...primitives,
       id: 99,
-      ...input,
       createdAt: '2025-02-01T00:00:00.000Z',
-    };
+    });
   }
 }
 
@@ -105,7 +107,7 @@ describe('GET /products', () => {
     const response = await listProducts({ activeOnly: 'false' });
 
     expect(response).toHaveLength(4);
-    expect(response.some((product: Product) => product.isActive === false)).toBe(true);
+    expect(response.some((product: ProductPrimitives) => product.isActive === false)).toBe(true);
   });
 
   it('returns products with stock field', async () => {
@@ -138,7 +140,7 @@ describe('GET /products', () => {
     await expect(listProducts({ maxPrice: 'abc' })).rejects.toThrow();
   });
 
-  async function listProducts(rawQuery: Record<string, unknown> = {}): Promise<Product[]> {
+  async function listProducts(rawQuery: Record<string, unknown> = {}): Promise<ProductPrimitives[]> {
     const transformedQuery = await queryPipe.transform(rawQuery, {
       type: 'query',
       metatype: ListProductsQueryDto,
@@ -205,7 +207,7 @@ describe('POST /products', () => {
     );
   });
 
-  async function createProduct(rawBody: Record<string, unknown>): Promise<Product> {
+  async function createProduct(rawBody: Record<string, unknown>): Promise<ProductPrimitives> {
     const transformedBody = await bodyPipe.transform(rawBody, {
       type: 'body',
       metatype: CreateProductRequestDto,

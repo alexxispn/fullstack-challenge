@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { QueryResultRow } from 'pg';
 
-import { CreateProduct, ListProductsCriteria, Product } from '../../../../domain/products/product';
+import { ListProductsCriteria, Product } from '../../../../domain/products/product';
 import { ProductRepositoryPort } from '../../../../ports/product-repository.port';
 import { DatabaseService } from '../../../../infrastructure/database/database.service';
 
@@ -54,25 +54,26 @@ export class PostgresProductRepository implements ProductRepositoryPort {
       values,
     );
 
-    return result.rows.map(mapProductRow);
+    return result.rows.map(mapRowToProduct);
   }
 
-  async create(input: CreateProduct): Promise<Product> {
+  async create(product: Product): Promise<Product> {
+    const primitives = product.toPrimitives();
     const result = await this.databaseService.query<ProductRow>(
       `
         INSERT INTO products (name, category, price, is_active, stock)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING id, name, category, price, is_active, stock, created_at
       `,
-      [input.name, input.category, input.price, input.isActive, input.stock],
+      [primitives.name, primitives.category, primitives.price, primitives.isActive, primitives.stock],
     );
 
-    return mapProductRow(result.rows[0]);
+    return mapRowToProduct(result.rows[0]);
   }
 }
 
-function mapProductRow(row: ProductRow): Product {
-  return {
+function mapRowToProduct(row: ProductRow): Product {
+  return Product.fromPersistence({
     id: row.id,
     name: row.name,
     category: row.category,
@@ -83,5 +84,5 @@ function mapProductRow(row: ProductRow): Product {
       row.created_at instanceof Date
         ? row.created_at.toISOString()
         : new Date(row.created_at).toISOString(),
-  };
+  });
 }
