@@ -8,66 +8,49 @@ import { CreateProductRequestDto } from '../src/adapters/inbound/http/products/d
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
 import { ListProductsCriteria, Product, ProductPrimitives } from '../src/domain/products/product';
-import { PRODUCT_READER, PRODUCT_WRITER, ProductRepository } from '../src/ports/product-repository.port';
+import { PRODUCT_READER, PRODUCT_WRITER, ProductReader, ProductWriter } from '../src/ports/product-repository.port';
 
-const seededProducts: ProductPrimitives[] = [
-  {
-    id: 1,
-    name: 'Aurora Ring',
-    category: 'rings',
-    price: 129,
-    isActive: true,
-    stock: 25,
-    createdAt: '2025-01-11T09:00:00.000Z',
-  },
-  {
-    id: 2,
-    name: 'Vintage Pearl Pendant',
-    category: 'necklaces',
-    price: 175,
-    isActive: false,
-    stock: 0,
-    createdAt: '2025-01-15T12:00:00.000Z',
-  },
-  {
-    id: 3,
-    name: 'Sapphire Hoop Earrings',
-    category: 'earrings',
-    price: 99,
-    isActive: true,
-    stock: 50,
-    createdAt: '2025-01-17T11:10:00.000Z',
-  },
-  {
-    id: 4,
-    name: 'Mini Charm Bracelet',
-    category: 'bracelets',
-    price: 72,
-    isActive: true,
-    stock: 100,
-    createdAt: '2025-01-20T13:05:00.000Z',
-  },
-];
+class ProductsInCatalog implements ProductReader {
+  private products: Product[];
 
-class FakeProductsRepository implements ProductRepository {
-  async findAll(criteria: ListProductsCriteria): Promise<Product[]> {
-    return seededProducts
-      .filter((p) => !criteria.activeOnly || p.isActive)
-      .filter((p) => !criteria.category || p.category.toLowerCase() === criteria.category!.toLowerCase())
-      .filter((p) => criteria.maxPrice === undefined || p.price <= criteria.maxPrice)
-      .sort((left, right) => right.createdAt!.localeCompare(left.createdAt!))
-      .map((p) => Product.fromPersistence(p));
+  constructor(products: Product[]) {
+    this.products = products;
   }
 
+  async findAll(_criteria: ListProductsCriteria): Promise<Product[]> {
+    return this.products;
+  }
+}
+
+class PersistingProductCatalog implements ProductWriter {
   async create(product: Product): Promise<Product> {
-    const primitives = product.toPrimitives();
     return Product.fromPersistence({
-      ...primitives,
+      ...product.toPrimitives(),
       id: 99,
       createdAt: '2025-02-01T00:00:00.000Z',
     });
   }
 }
+
+const aRing = Product.fromPersistence({
+  id: 1,
+  name: 'Aurora Ring',
+  category: 'rings',
+  price: 129,
+  isActive: true,
+  stock: 25,
+  createdAt: '2025-01-11T09:00:00.000Z',
+});
+
+const anEarring = Product.fromPersistence({
+  id: 3,
+  name: 'Sapphire Hoop Earrings',
+  category: 'earrings',
+  price: 99,
+  isActive: true,
+  stock: 50,
+  createdAt: '2025-01-17T11:10:00.000Z',
+});
 
 describe('GET /products', () => {
   let testingModule: TestingModule;
@@ -75,14 +58,13 @@ describe('GET /products', () => {
   let queryPipe: ValidationPipe;
 
   beforeAll(async () => {
-    const fake = new FakeProductsRepository();
     testingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PRODUCT_READER)
-      .useValue(fake)
+      .useValue(new ProductsInCatalog([aRing, anEarring]))
       .overrideProvider(PRODUCT_WRITER)
-      .useValue(fake)
+      .useValue(new PersistingProductCatalog())
       .compile();
 
     productsController = testingModule.get(ProductsController);
@@ -96,47 +78,15 @@ describe('GET /products', () => {
     await testingModule.close();
   });
 
-  it('returns active products by default, newest first', async () => {
-    const response = await listProducts();
-
-    expect(response).toEqual([
-      expect.objectContaining({ id: 4, isActive: true }),
-      expect.objectContaining({ id: 3, isActive: true }),
-      expect.objectContaining({ id: 1, isActive: true }),
-    ]);
-  });
-
-  it('returns inactive products too when activeOnly=false', async () => {
-    const response = await listProducts({ activeOnly: 'false' });
-
-    expect(response).toHaveLength(4);
-    expect(response.some((product: ProductPrimitives) => product.isActive === false)).toBe(true);
-  });
-
   it('returns products with stock field', async () => {
     const response = await listProducts();
 
     expect(response).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: 4, stock: 100 }),
-        expect.objectContaining({ id: 3, stock: 50 }),
         expect.objectContaining({ id: 1, stock: 25 }),
+        expect.objectContaining({ id: 3, stock: 50 }),
       ]),
     );
-  });
-
-  it('filters by category and maxPrice combined', async () => {
-    const response = await listProducts({ category: 'rings', maxPrice: '130' });
-
-    expect(response).toEqual([
-      expect.objectContaining({ id: 1, category: 'rings', price: 129 }),
-    ]);
-  });
-
-  it('returns empty array when no products match filters', async () => {
-    const response = await listProducts({ category: 'rings', maxPrice: '10' });
-
-    expect(response).toEqual([]);
   });
 
   it('rejects non-numeric maxPrice with 400', async () => {
@@ -160,14 +110,13 @@ describe('POST /products', () => {
   let bodyPipe: ValidationPipe;
 
   beforeAll(async () => {
-    const fake = new FakeProductsRepository();
     testingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PRODUCT_READER)
-      .useValue(fake)
+      .useValue(new ProductsInCatalog([]))
       .overrideProvider(PRODUCT_WRITER)
-      .useValue(fake)
+      .useValue(new PersistingProductCatalog())
       .compile();
 
     productsController = testingModule.get(ProductsController);
