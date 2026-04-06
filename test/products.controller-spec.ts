@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsController } from '../src/adapters/inbound/http/products/products.controller';
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
-import { Product } from '../src/domain/products/product';
+import { ListProductsCriteria, Product } from '../src/domain/products/product';
 import { PRODUCT_REPOSITORY_PORT, ProductRepositoryPort } from '../src/ports/product-repository.port';
 
 const seededProducts: Product[] = [
@@ -45,9 +45,11 @@ const seededProducts: Product[] = [
 ];
 
 class FakeProductsRepository implements ProductRepositoryPort {
-  async findAll(filters: { activeOnly: boolean }): Promise<Product[]> {
+  async findAll(criteria: ListProductsCriteria): Promise<Product[]> {
     return seededProducts
-      .filter((product) => !filters.activeOnly || product.isActive)
+      .filter((product) => !criteria.activeOnly || product.isActive)
+      .filter((product) => !criteria.category || product.category.toLowerCase() === criteria.category.toLowerCase())
+      .filter((product) => criteria.maxPrice === undefined || product.price <= criteria.maxPrice)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -95,6 +97,20 @@ describe('GET /products', () => {
 
     expect(response).toHaveLength(4);
     expect(response.some((product: Product) => product.isActive === false)).toBe(true);
+  });
+
+  it('filters by category and maxPrice combined', async () => {
+    const response = await listProducts({ category: 'rings', maxPrice: '130' });
+
+    expect(response).toEqual([
+      expect.objectContaining({ id: 1, category: 'rings', price: 129 }),
+    ]);
+  });
+
+  it('returns empty array when no products match filters', async () => {
+    const response = await listProducts({ category: 'rings', maxPrice: '10' });
+
+    expect(response).toEqual([]);
   });
 
   async function listProducts(rawQuery: Record<string, unknown> = {}): Promise<Product[]> {
