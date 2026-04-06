@@ -134,6 +134,10 @@ describe('GET /products', () => {
     expect(response).toEqual([]);
   });
 
+  it('rejects non-numeric maxPrice with 400', async () => {
+    await expect(listProducts({ maxPrice: 'abc' })).rejects.toThrow();
+  });
+
   async function listProducts(rawQuery: Record<string, unknown> = {}): Promise<Product[]> {
     const transformedQuery = await queryPipe.transform(rawQuery, {
       type: 'query',
@@ -167,6 +171,18 @@ describe('POST /products', () => {
 
   afterAll(async () => {
     await testingModule.close();
+  });
+
+  it('rejects negative stock with 400', async () => {
+    await expect(
+      createProduct({
+        name: 'Test Ring',
+        category: 'rings',
+        price: 99,
+        isActive: true,
+        stock: -1,
+      }),
+    ).rejects.toThrow();
   });
 
   it('creates a product with stock and returns it', async () => {
