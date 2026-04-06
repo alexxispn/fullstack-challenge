@@ -73,6 +73,8 @@ Baby-step commits follow the TDD cycle — each `test(red):` commit contains fai
 
 - **Category as a constrained type**: validate `category` against a known set of values (enum or database lookup) instead of accepting any free-text string.
 
+- **Cursor-based pagination and advanced querying**: `ListProductsCriteria` would grow to support `cursor`/`limit` (not offset — offset is O(n) in Postgres), multi-field sorting with a whitelist of allowed columns, and full-text search via `tsvector`/GIN index. The hexagonal architecture makes this straightforward: the domain criteria type grows, the use case stays pass-through, and all complexity lands in the repository SQL and the DTO validation.
+
 ## AI Tools Used
 
 **Claude Code** (Anthropic's CLI agent) was used as a pair programming partner throughout the exercise:
