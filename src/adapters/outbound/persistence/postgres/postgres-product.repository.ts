@@ -23,26 +23,17 @@ export class PostgresProductRepository implements ProductRepository {
   ) {}
 
   async findAll(criteria: ListProductsCriteria): Promise<Product[]> {
-    const values: unknown[] = [];
-    const whereClauses: string[] = [];
+    const filters = [
+      { applies: criteria.activeOnly, clause: 'is_active = $i', value: true },
+      { applies: !!criteria.category, clause: 'LOWER(category) = LOWER($i)', value: criteria.category },
+      { applies: criteria.maxPrice !== undefined, clause: 'price <= $i', value: criteria.maxPrice },
+    ].filter((f) => f.applies);
 
-    if (criteria.activeOnly) {
-      values.push(true);
-      whereClauses.push(`is_active = $${values.length}`);
-    }
-
-    if (criteria.category) {
-      values.push(criteria.category);
-      whereClauses.push(`LOWER(category) = LOWER($${values.length})`);
-    }
-
-    if (criteria.maxPrice !== undefined) {
-      values.push(criteria.maxPrice);
-      whereClauses.push(`price <= $${values.length}`);
-    }
-
+    const values = filters.map((f) => f.value);
     const whereStatement =
-      whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      filters.length > 0
+        ? `WHERE ${filters.map((f, i) => f.clause.replace('$i', `$${i + 1}`)).join(' AND ')}`
+        : '';
 
     const result = await this.databaseService.query<ProductRow>(
       `
