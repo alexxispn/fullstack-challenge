@@ -7,50 +7,14 @@ import { ProductsController } from '../src/adapters/inbound/http/products/produc
 import { CreateProductRequestDto } from '../src/adapters/inbound/http/products/dto/create-product-request.dto';
 import { ListProductsQueryDto } from '../src/adapters/inbound/http/products/dto/list-products-query.dto';
 import { AppModule } from '../src/app.module';
-import { ListProductsCriteria, Product, ProductPrimitives } from '../src/domain/products/product';
-import { PRODUCT_READER, PRODUCT_WRITER, ProductReader, ProductWriter } from '../src/ports/product-repository.port';
+import { ProductPrimitives } from '../src/domain/products/product';
+import { PRODUCT_READER, PRODUCT_WRITER } from '../src/ports/product-repository.port';
+import { ProductExamples } from './object-mothers/product-examples';
+import { ProductsInCatalog } from './test-doubles/products-in-catalog';
+import { PersistingProductCatalog } from './test-doubles/persisting-product-catalog';
 
-class ProductsInCatalog implements ProductReader {
-  private products: Product[];
-
-  constructor(products: Product[]) {
-    this.products = products;
-  }
-
-  async findAll(_criteria: ListProductsCriteria): Promise<Product[]> {
-    return this.products;
-  }
-}
-
-class PersistingProductCatalog implements ProductWriter {
-  async create(product: Product): Promise<Product> {
-    return Product.fromPersistence({
-      ...product.toPrimitives(),
-      id: 99,
-      createdAt: '2025-02-01T00:00:00.000Z',
-    });
-  }
-}
-
-const aRing = Product.fromPersistence({
-  id: 1,
-  name: 'Aurora Ring',
-  category: 'rings',
-  price: 129,
-  isActive: true,
-  stock: 25,
-  createdAt: '2025-01-11T09:00:00.000Z',
-});
-
-const anEarring = Product.fromPersistence({
-  id: 3,
-  name: 'Sapphire Hoop Earrings',
-  category: 'earrings',
-  price: 99,
-  isActive: true,
-  stock: 50,
-  createdAt: '2025-01-17T11:10:00.000Z',
-});
+const aRing = ProductExamples.aRing();
+const anEarring = ProductExamples.anEarring();
 
 describe('GET /products', () => {
   let testingModule: TestingModule;

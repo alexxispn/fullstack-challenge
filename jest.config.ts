@@ -5,7 +5,11 @@ const config: Config = {
   rootDir: '.',
   testEnvironment: 'node',
   testMatch: ['<rootDir>/test/**/*.ts'],
-  testPathIgnorePatterns: ['<rootDir>/test/integration/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/test/integration/',
+    '<rootDir>/test/object-mothers/',
+    '<rootDir>/test/test-doubles/',
+  ],
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
