@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+*.md
+docs
+frontend
+test
+jest.config.ts
+jest.integration.config.ts
+docker-compose.yml
+Dockerfile.naive

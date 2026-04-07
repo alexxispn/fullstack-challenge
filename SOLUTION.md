@@ -157,6 +157,10 @@ test/
 
 Key decisions: split `PostgresProductRepository` into reader + writer (CQRS-lite, each port owned by its feature), split controller into per-feature controllers, zero cross-feature imports enforced by design. Integration tests are self-contained per feature — reader tests arrange with raw SQL, writer tests validate via `RETURNING`, neither crosses the feature boundary. Pure structure refactoring with all tests passing throughout.
 
+#### Production-ready Docker setup
+
+Added a multi-stage Dockerfile with 4 stages (deps → build → prod-deps → distroless runtime) that produces a 191 MB image vs 1.38 GB from a naive single-stage build — 86% reduction. The runtime uses `gcr.io/distroless` (no shell, no package manager) running as `nonroot`. Updated `docker-compose.yml` to build and run the API alongside Postgres with a healthcheck-based startup dependency. Migrations run separately via `npm run db:setup` as documented in the README.
+
 ### Test summary
 
 ```
