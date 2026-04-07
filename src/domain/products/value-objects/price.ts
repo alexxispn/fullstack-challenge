@@ -10,7 +10,10 @@ export class Price {
     return new Price(value);
   }
 
+  private static readonly CENTS_PER_UNIT = 100;
+
   private static hasAtMostTwoDecimals(value: number): boolean {
-    return Number.isFinite(value) && Math.round(value * 100) === value * 100;
+    const cents = value * Price.CENTS_PER_UNIT;
+    return Number.isFinite(value) && Math.round(cents) === cents;
   }
 }
