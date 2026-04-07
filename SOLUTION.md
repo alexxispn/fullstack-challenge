@@ -185,23 +185,24 @@ npm run test:integration    → 7 integration tests (4s + container startup)
     ✓ rejects invalid price before reaching the writer
     ✓ rejects invalid stock before reaching the writer
 
-  GET /products  (NestJS wiring — simplified stubs, no domain logic)
+  GET /products  (isolated TestingModule — only ListProductsController)
     ✓ returns products with stock field
     ✓ rejects non-numeric maxPrice with 400
-  POST /products
+
+  POST /products  (isolated TestingModule — only CreateProductController)
     ✓ rejects negative stock with 400
     ✓ creates a product with stock and returns it
 
-  PostgresProductRepository  (integration with Testcontainers)
-    create
-      ✓ inserts a product and returns it with id and createdAt from Postgres
-      ✓ preserves decimal precision for price
-    findAll
-      ✓ returns products ordered by newest first
-      ✓ filters active products only
-      ✓ filters by category case-insensitively
-      ✓ filters by maxPrice inclusively
-      ✓ combines all filters with AND
+  PostgresProductWriter  (integration with Testcontainers)
+    ✓ inserts a product and returns it with id and createdAt from Postgres
+    ✓ preserves decimal precision for price
+
+  PostgresProductReader  (integration with Testcontainers — raw SQL arrange)
+    ✓ returns products ordered by newest first
+    ✓ filters active products only
+    ✓ filters by category case-insensitively
+    ✓ filters by maxPrice inclusively
+    ✓ combines all filters with AND
 
   35 passed
 ```
@@ -215,9 +216,67 @@ Ran a systematic analysis against the Jerzyk catalog (56 smells, 10 categories).
 - **`withTransaction()` helper** — centralized BEGIN/COMMIT/ROLLBACK lifecycle for migration scripts
 - **Named constant** — `CENTS_PER_UNIT` replaces magic `100` in Price validation
 
+#### 6. Vertical Slice Architecture
+
+**Problem:** The codebase was organized by technical layer: `domain/`, `application/`, `adapters/`, `infrastructure/`, `ports/`. Modifying a single feature (e.g., "list products") required navigating 5 directories. The first level of folders described the architecture pattern (Hexagonal), not what the application does — failing the *Screaming Architecture* test.
+
+**Solution:**
+
+Reorganized from horizontal layers to vertical feature slices. Each feature is a self-contained folder with its own controller, DTO, use case, port, and persistence adapter:
+
+```
+src/
+├── products/                              ← Bounded context
+│   ├── products.module.ts                 ← DI wiring
+│   ├── domain/                            ← Shared aggregate, VOs, errors
+│   ├── list-products/                     ← Feature: GET /products
+│   │   ├── list-products.controller.ts
+│   │   ├── list-products-query.dto.ts
+│   │   ├── list-products.use-case.ts
+│   │   ├── product-reader.port.ts
+│   │   └── postgres-product-reader.ts
+│   └── create-product/                    ← Feature: POST /products
+│       ├── create-product.controller.ts
+│       ├── create-product-request.dto.ts
+│       ├── create-product.use-case.ts
+│       ├── product-writer.port.ts
+│       └── postgres-product-writer.ts
+└── shared/                                ← Cross-cutting (database, filters)
+```
+
+Key structural decisions:
+
+- **Split `PostgresProductRepository` into `PostgresProductReader` + `PostgresProductWriter`** — the most valuable change. The ISP ports (`ProductReader`/`ProductWriter`) already existed, but the implementation was a single class. Now the separation is real top-to-bottom, enabling CQRS-lite: reads can optimize SQL independently of writes. Each port lives inside the feature that owns it.
+- **Split `ProductsController` into per-feature controllers** — `ListProductsController` and `CreateProductController`, each with a single endpoint. Eliminates the multi-concern controller. Both use `@Controller('products')` so the route prefix stays the same.
+- **Shared domain stays at module level** — `products/domain/` contains the `Product` aggregate, value objects, and errors. Both features import from here, which is correct: it's bounded-context cohesion, not cross-feature coupling.
+- **Zero cross-feature imports** — `list-products/` never imports from `create-product/` and vice versa. This is enforced by design: each feature owns its port interface.
+
+**Test structure mirrors the source:**
+
+```
+test/
+├── products/
+│   ├── domain/product.spec.ts
+│   ├── list-products/
+│   │   ├── list-products.use-case.spec.ts
+│   │   ├── list-products.controller.spec.ts
+│   │   └── postgres-product-reader.spec.ts
+│   └── create-product/
+│       ├── create-product.use-case.spec.ts
+│       ├── create-product.controller.spec.ts
+│       └── postgres-product-writer.spec.ts
+├── object-mothers/
+└── test-doubles/
+```
+
+- **Controller tests use isolated `TestingModule`s** — each registers only its controller and use case, not the full `AppModule`. Faster startup, no cross-feature interference.
+- **Integration tests are self-contained per feature** — `postgres-product-reader.spec.ts` arranges data with raw SQL `INSERT` (no `ProductWriter` dependency), while `postgres-product-writer.spec.ts` validates via SQL `RETURNING`. Neither test crosses the feature boundary, even in test setup.
+- **Unit vs integration discrimination by naming convention** — `postgres-*.spec.ts` files are matched by `jest.integration.config.ts` and excluded from `jest.config.ts`. Co-location with the feature removes the need for a separate `test/integration/` directory.
+
+**Migration approach:** Pure structure refactoring — no behavior changes. All 28 unit tests pass throughout. The migration was atomic: create new structure, update imports, verify tests green, delete old directories. Git detected renames correctly, preserving file history.
+
 ### What would still improve with more time
 
 - **CQS on CreateProductUseCase**: currently the command returns `ProductPrimitives`, violating Command-Query Separation. Strict CQS would have it return `void` (or just the id), requiring either domain-generated UUIDs or a separate query after creation.
 - **Cursor-based pagination**: `cursor`/`limit` instead of offset, multi-field sorting with a whitelist of allowed columns
-- **Vertical slice architecture**: reorganize to `products/{domain,application,adapters}` for better scalability across bounded contexts
 - **Domain events**: `ProductCreated` events for side effects (notifications, audit logging, inventory sync)
