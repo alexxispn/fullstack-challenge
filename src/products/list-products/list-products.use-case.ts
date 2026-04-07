@@ -1,4 +1,5 @@
-import { ListProductsCriteria, ProductPrimitives } from '../domain/product';
+import { ProductPrimitives } from '../domain/product';
+import { ListProductsCriteria } from './list-products-criteria';
 import { ProductReader } from './product-reader.port';
 
 export class ListProductsUseCase {

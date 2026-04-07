@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { QueryResultRow } from 'pg';
 
-import { ListProductsCriteria, Product } from '../domain/product';
+import { Product } from '../domain/product';
+import { ListProductsCriteria } from './list-products-criteria';
 import { ProductReader } from './product-reader.port';
 import { DatabaseService } from '../../shared/database/database.service';
 

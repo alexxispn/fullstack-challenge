@@ -1,4 +1,5 @@
-import { ListProductsCriteria, Product } from '../../src/products/domain/product';
+import { Product } from '../../src/products/domain/product';
+import { ListProductsCriteria } from '../../src/products/list-products/list-products-criteria';
 import { ProductReader } from '../../src/products/list-products/product-reader.port';
 
 export class ProductsInCatalog implements ProductReader {

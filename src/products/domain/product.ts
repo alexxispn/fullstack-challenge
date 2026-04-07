@@ -21,12 +21,6 @@ export interface ProductPrimitives {
   createdAt: string | null;
 }
 
-export interface ListProductsCriteria {
-  activeOnly: boolean;
-  category?: string;
-  maxPrice?: number;
-}
-
 export class Product {
   private constructor(
     private readonly id: number | null,
