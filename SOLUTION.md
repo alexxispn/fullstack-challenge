@@ -1,5 +1,7 @@
 # Solution
 
+This repo has two branches. **`main`** contains the direct solution to the exercise: bug fix, filters, and stock end-to-end — pragmatic, concise, with Outside-In TDD and baby-step commits. **`extended-solution`** goes further with a rich domain model (Value Objects, aggregate root), Testcontainers integration tests, ISP on repository ports, test doubles refactor, code smell remediation, and a migration to Vertical Slice Architecture. It's there for anyone who wants to dig deeper into design rationale.
+
 ## What I Changed
 
 ### 1. Bug fix: `activeOnly` default
