@@ -1,5 +1,5 @@
-import { Product } from '../../src/domain/products/product';
-import { ProductWriter } from '../../src/ports/product-repository.port';
+import { Product } from '../../src/products/domain/product';
+import { ProductWriter } from '../../src/products/create-product/product-writer.port';
 
 export class ProductCatalogSpy implements ProductWriter {
   private lastSaved: Product | null = null;

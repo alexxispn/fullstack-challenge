@@ -1,5 +1,5 @@
-import { ListProductsCriteria, Product } from '../../src/domain/products/product';
-import { ProductReader } from '../../src/ports/product-repository.port';
+import { ListProductsCriteria, Product } from '../../src/products/domain/product';
+import { ProductReader } from '../../src/products/list-products/product-reader.port';
 
 export class ProductsInCatalog implements ProductReader {
   constructor(private products: Product[]) {}

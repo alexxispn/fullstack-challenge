@@ -1,4 +1,4 @@
-import { Product, CreateProductCommand } from '../../src/domain/products/product';
+import { Product, CreateProductCommand } from '../../src/products/domain/product';
 
 export class CreateProductExamples {
   static auroraRing(): CreateProductCommand {

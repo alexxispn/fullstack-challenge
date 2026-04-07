@@ -17,8 +17,8 @@
     "test": "jest --runInBand",
     "test:integration": "jest --config jest.integration.config.ts --runInBand",
     "test:watch": "jest --watch",
-    "db:migrate": "tsx src/infrastructure/database/scripts/migrate.ts",
-    "db:seed": "tsx src/infrastructure/database/scripts/seed.ts",
+    "db:migrate": "tsx src/shared/database/scripts/migrate.ts",
+    "db:seed": "tsx src/shared/database/scripts/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed"
   },
   "dependencies": {

@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { DomainErrorFilter } from './adapters/inbound/http/filters/domain-error.filter';
+import { DomainErrorFilter } from './shared/http/filters/domain-error.filter';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {

@@ -4,9 +4,9 @@ const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/test/**/*.ts'],
+  testMatch: ['<rootDir>/test/**/*.spec.ts'],
   testPathIgnorePatterns: [
-    '<rootDir>/test/integration/',
+    '<rootDir>/test/.+/postgres-.+\\.spec\\.ts',
     '<rootDir>/test/object-mothers/',
     '<rootDir>/test/test-doubles/',
   ],
