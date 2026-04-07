@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { createPool, readSqlFiles } from './shared';
+import { createPool, readSqlFiles, withTransaction } from './shared';
 
 async function runMigrations(): Promise<void> {
   const pool = await createPool();
@@ -25,20 +25,11 @@ async function runMigrations(): Promise<void> {
         continue;
       }
 
-      const client = await pool.connect();
-
-      try {
-        await client.query('BEGIN');
+      await withTransaction(pool, async (client) => {
         await client.query(file.sql);
         await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file.name]);
-        await client.query('COMMIT');
-        console.log(`Applied migration: ${file.name}`);
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
+      });
+      console.log(`Applied migration: ${file.name}`);
     }
   } finally {
     await pool.end();

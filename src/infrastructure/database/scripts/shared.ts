@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 
 import { getDatabaseConfig } from '../database.config';
 
@@ -23,4 +23,18 @@ export async function readSqlFiles(directory: string): Promise<Array<{ name: str
       sql: await readFile(join(directory, name), 'utf8'),
     })),
   );
+}
+
+export async function withTransaction(pool: Pool, fn: (client: PoolClient) => Promise<void>): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await fn(client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
