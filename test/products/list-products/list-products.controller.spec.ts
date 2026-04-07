@@ -8,25 +8,26 @@ import { ListProductsQueryDto } from '../../../src/products/list-products/list-p
 import { ListProductsUseCase } from '../../../src/products/list-products/list-products.use-case';
 import { ProductPrimitives } from '../../../src/products/domain/product';
 import { ProductExamples } from '../../object-mothers/product-examples';
-import { ProductsInCatalog } from '../../test-doubles/products-in-catalog';
+import { ListProductsCriteriaSpy } from '../../test-doubles/list-products-criteria-spy';
 
-const aRing = ProductExamples.aRing();
-const anEarring = ProductExamples.anEarring();
+const aRing = ProductExamples.aRing().toPrimitives();
+const anEarring = ProductExamples.anEarring().toPrimitives();
 
 describe('GET /products', () => {
   let testingModule: TestingModule;
   let controller: ListProductsController;
+  let criteriaSpy: ListProductsCriteriaSpy;
   let queryPipe: ValidationPipe;
 
   beforeAll(async () => {
-    const reader = new ProductsInCatalog([aRing, anEarring]);
+    criteriaSpy = new ListProductsCriteriaSpy([aRing, anEarring]);
 
     testingModule = await Test.createTestingModule({
       controllers: [ListProductsController],
       providers: [
         {
           provide: ListProductsUseCase,
-          useValue: new ListProductsUseCase(reader),
+          useValue: criteriaSpy.asUseCase(),
         },
       ],
     }).compile();
@@ -51,6 +52,42 @@ describe('GET /products', () => {
         expect.objectContaining({ id: 3, stock: 50 }),
       ]),
     );
+  });
+
+  it('defaults to active-only products', async () => {
+    await listProducts();
+
+    expect(criteriaSpy.lastReceivedCriteria()).toEqual({
+      activeOnly: true,
+      category: undefined,
+      maxPrice: undefined,
+    });
+  });
+
+  it('passes category filter to use case', async () => {
+    await listProducts({ category: 'rings' });
+
+    expect(criteriaSpy.lastReceivedCriteria()).toEqual(
+      expect.objectContaining({ category: 'rings' }),
+    );
+  });
+
+  it('passes maxPrice filter to use case as number', async () => {
+    await listProducts({ maxPrice: '150' });
+
+    expect(criteriaSpy.lastReceivedCriteria()).toEqual(
+      expect.objectContaining({ maxPrice: 150 }),
+    );
+  });
+
+  it('passes combined filters to use case', async () => {
+    await listProducts({ category: 'rings', maxPrice: '100', activeOnly: 'false' });
+
+    expect(criteriaSpy.lastReceivedCriteria()).toEqual({
+      activeOnly: false,
+      category: 'rings',
+      maxPrice: 100,
+    });
   });
 
   it('rejects non-numeric maxPrice with 400', async () => {
