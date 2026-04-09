@@ -1,4 +1,4 @@
-import { DomainError } from './domain-error';
+import { DomainError } from '../../../shared/domain/errors/domain-error';
 
 export class InvalidStockError extends DomainError {
   constructor(value: number) {
